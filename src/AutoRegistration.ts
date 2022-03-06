@@ -14,7 +14,7 @@ export interface IAutoRegHttpOpts {
 }
 
 export interface IAutoRegStep {
-    type: "http"|"executable"|"implicit";
+    type: "http"|"executable"|"implicit"|"static";
     path: string;
     opts: IAutoRegHttpOpts|undefined;
     parameters: {[key: string]: string}; // key -> parameter value
@@ -68,6 +68,10 @@ export class AutoRegistration {
             const params = AutoRegistration.generateParameters(step.parameters, mxId);
             await this.store.storeAccount(mxId, proto, params.username);
             return this.protoInstance.getAccount(params.username, protocol, mxId)!;
+        } else if (step.type === "static") {
+            const username = AutoRegistration.getStaticUser(step.parameters, mxId);
+            await this.store.storeAccount(mxId, proto, username);
+            return this.protoInstance.getAccount(username, protocol, mxId)!;
         } else {
             throw new Error(`This method of registration is unsupported (${step.type})`);
         }
@@ -161,6 +165,14 @@ export class AutoRegistration {
         const step = this.autoRegConfig.protocolSteps![protocol];
         const result = AutoRegistration.generateParameters(step.parameters, mxId);
         this.nameCache.set(protocol+mxId, result);
+        return result;
+    }
+
+    public static getStaticUser(parameters: {[key: string]: string}, mxId: string) : string {
+        const result = parameters[mxId];
+        if (!result) {
+          throw new Error(`Couldn't map ${mxId} to a JID`);
+        }
         return result;
     }
 
