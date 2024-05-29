@@ -76,7 +76,8 @@ function createMEH() {
         new Deduplicator(),
         config,
         gatewayHandler as any,
-        bridge as any
+        bridge as any,
+        {} as any,
     );
     return {meh, store};
 }

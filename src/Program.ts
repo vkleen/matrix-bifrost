@@ -1,4 +1,4 @@
-import { Cli, Bridge, AppServiceRegistration, Logger, TypingEvent, Request, PresenceEvent } from "matrix-appservice-bridge";
+import { Cli, Bridge, AppServiceRegistration, Logger, TypingEvent, Request, PresenceEvent, MediaProxy } from "matrix-appservice-bridge";
 import { EventEmitter } from "events";
 import { MatrixEventHandler } from "./MatrixEventHandler";
 import { MatrixRoomHandler } from "./MatrixRoomHandler";
@@ -15,6 +15,9 @@ import { Metrics } from "./Metrics";
 import { AutoRegistration } from "./AutoRegistration";
 import { GatewayHandler } from "./GatewayHandler";
 import { IRemoteUserAdminData, MROOM_TYPE_UADMIN } from "./store/Types";
+
+import * as fs from "fs";
+import { webcrypto } from "node:crypto";
 
 Logger.configure({console: "debug"});
 const log = new Logger("Program");
@@ -86,6 +89,21 @@ class Program {
         reg.addRegexPattern("aliases", "#bifrost_.*", true);
         reg.pushEphemeral = true;
         callback(reg);
+    }
+
+    private async initialiseMediaProxy(): Promise<MediaProxy> {
+        const config = this.config.bridge.mediaProxy;
+        const jwk = JSON.parse(fs.readFileSync(config.signingKeyPath, "utf8").toString());
+        const signingKey = await webcrypto.subtle.importKey('jwk', jwk, {
+            name: 'HMAC',
+            hash: 'SHA-512',
+        }, true, ['sign', 'verify']);
+        const publicUrl = new URL(config.publicUrl);
+
+        const mediaProxy = new MediaProxy({ publicUrl, signingKey, ttl: config.ttlSeconds * 1000 }, this.bridge.getIntent().matrixClient);
+        mediaProxy.start(config.bindPort);
+
+        return mediaProxy;
     }
 
     private async waitForHomeserver() {
@@ -314,8 +332,10 @@ class Program {
         this.roomSync = new RoomSync(
             purple, this.store, this.deduplicator, this.gatewayHandler, this.bridge.getIntent(),
         );
+        const mediaProxy = await this.initialiseMediaProxy();
+
         this.eventHandler = new MatrixEventHandler(
-            purple, this.store, this.deduplicator, this.config, this.gatewayHandler, this.bridge, autoReg,
+            purple, this.store, this.deduplicator, this.config, this.gatewayHandler, this.bridge, mediaProxy, autoReg
         );
 
         await this.bridge.listen(port);
