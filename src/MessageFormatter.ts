@@ -51,8 +51,6 @@ export class MessageFormatter {
             return {body: `/me ${content.body}`, formatted, id: event.event_id};
         }
         if (["m.file", "m.image", "m.video"].includes(event.content.msgtype) && event.content.url) {
-            const [domain, mediaId] = event.content.url.substr("mxc://".length).split("/");
-            const url = (config.mediaserverUrl ? config.mediaserverUrl : config.homeserverUrl).replace(/\/$/, "");
             return {
                 body: content.body,
                 id: event.event_id,

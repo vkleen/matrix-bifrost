@@ -12,7 +12,6 @@ export class Config {
     public readonly bridge: IConfigBridge = {
         domain: "",
         homeserverUrl: "",
-        mediaserverUrl: undefined,
         userPrefix: "_bifrost_",
         appservicePort: 9555,
         mediaProxy: {
@@ -108,7 +107,6 @@ export class Config {
 export interface IConfigBridge {
     domain: string;
     homeserverUrl: string;
-    mediaserverUrl?: string;
     userPrefix: string;
     appservicePort?: number;
     mediaProxy: {
