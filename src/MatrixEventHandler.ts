@@ -1,4 +1,4 @@
-import { Bridge, MatrixUser, Request, WeakEvent, RoomBridgeStoreEntry, TypingEvent, PresenceEvent } from "matrix-appservice-bridge";
+import { Bridge, MatrixUser, Request, WeakEvent, RoomBridgeStoreEntry, TypingEvent, PresenceEvent, MediaProxy } from "matrix-appservice-bridge";
 import { MatrixMembershipEvent, MatrixMessageEvent } from "./MatrixTypes";
 import { MROOM_TYPE_UADMIN, MROOM_TYPE_IM, MROOM_TYPE_GROUP,
     IRemoteUserAdminData,
@@ -37,6 +37,7 @@ export class MatrixEventHandler {
         private readonly config: Config,
         private readonly gatewayHandler: GatewayHandler,
         private readonly bridge: Bridge,
+        private readonly mediaProxy: MediaProxy,
         private readonly autoReg: AutoRegistration|null = null,
     ) {
         this.roomAliases = new RoomAliasSet(this.config.portals, this.purple);
@@ -609,7 +610,7 @@ Say \`help\` for more commands.
         }
         const recipient: string = context.remote.get("recipient");
         log.info(`Sending IM to ${recipient}`);
-        const msg = MessageFormatter.matrixEventToBody(event as MatrixMessageEvent, this.config.bridge);
+        const msg = await MessageFormatter.matrixEventToBody(event as MatrixMessageEvent, this.config.bridge, this.mediaProxy);
         acct.sendIM(recipient, msg);
     }
 
@@ -625,7 +626,7 @@ Say \`help\` for more commands.
         const isGateway: boolean = context.remote.get("gateway");
         const name: string = context.remote.get("room_name");
         if (isGateway) {
-            const msg = MessageFormatter.matrixEventToBody(event as MatrixMessageEvent, this.config.bridge);
+            const msg = await MessageFormatter.matrixEventToBody(event as MatrixMessageEvent, this.config.bridge, this.mediaProxy);
             try {
                 await this.gatewayHandler.sendMatrixMessage(name, event.sender, msg, context);
             } catch (ex) {
@@ -645,7 +646,7 @@ Say \`help\` for more commands.
                 await this.joinOrDefer(acct, name, props);
             }
             const roomName: string = context.remote.get("room_name");
-            const msg = MessageFormatter.matrixEventToBody(event as MatrixMessageEvent, this.config.bridge);
+            const msg = await MessageFormatter.matrixEventToBody(event as MatrixMessageEvent, this.config.bridge, this.mediaProxy);
             let nick = "";
             // XXX: Gnarly way of trying to determine who we are.
             try {

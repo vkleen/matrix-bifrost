@@ -1,7 +1,7 @@
 import { BifrostProtocol } from "./bifrost/Protocol";
 import { PRPL_S4B, PRPL_XMPP } from "./ProtoHacks";
 import { Parser } from "htmlparser2";
-import { Intent, Logger } from "matrix-appservice-bridge";
+import { Intent, Logger, MediaProxy } from "matrix-appservice-bridge";
 import { IConfigBridge } from "./Config";
 import { IMatrixMsgContents, MatrixMessageEvent } from "./MatrixTypes";
 
@@ -33,7 +33,7 @@ const log = new Logger("MessageFormatter");
 
 export class MessageFormatter {
 
-    public static matrixEventToBody(event: MatrixMessageEvent, config: IConfigBridge): IBasicProtocolMessage {
+    public static async matrixEventToBody(event: MatrixMessageEvent, config: IConfigBridge, mediaProxy: MediaProxy): Promise<IBasicProtocolMessage> {
         let content = event.content;
         const originalMessage = event.content["m.relates_to"]?.event_id;
         const formatted: {type: string, body: string}[] = [];
@@ -51,15 +51,13 @@ export class MessageFormatter {
             return {body: `/me ${content.body}`, formatted, id: event.event_id};
         }
         if (["m.file", "m.image", "m.video"].includes(event.content.msgtype) && event.content.url) {
-            const [domain, mediaId] = event.content.url.substr("mxc://".length).split("/");
-            const url = (config.mediaserverUrl ? config.mediaserverUrl : config.homeserverUrl).replace(/\/$/, "");
             return {
                 body: content.body,
                 id: event.event_id,
                 opts: {
                     attachments: [
                         {
-                            uri: `${url}/_matrix/media/v1/download/${domain}/${mediaId}`,
+                            uri: (await mediaProxy.generateMediaUrl(event.content.url)).toString(),
                             mimetype: event.content.info?.mimetype,
                             size: event.content.info?.size,
                         },

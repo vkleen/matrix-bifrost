@@ -12,9 +12,14 @@ export class Config {
     public readonly bridge: IConfigBridge = {
         domain: "",
         homeserverUrl: "",
-        mediaserverUrl: undefined,
         userPrefix: "_bifrost_",
         appservicePort: 9555,
+        mediaProxy: {
+            signingKeyPath: "",
+            ttlSeconds: 0,
+            bindPort: 0,
+            publicUrl: ""
+        },
     };
 
     public readonly roomRules: IConfigRoomRule[] = [];
@@ -102,9 +107,14 @@ export class Config {
 export interface IConfigBridge {
     domain: string;
     homeserverUrl: string;
-    mediaserverUrl?: string;
     userPrefix: string;
     appservicePort?: number;
+    mediaProxy: {
+        signingKeyPath: string;
+        ttlSeconds: number;
+        bindPort: number;
+        publicUrl: string;
+    },
 }
 
 export interface IConfigPurple {
