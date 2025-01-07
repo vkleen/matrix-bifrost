@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = github:NixOS/nixpkgs;
+    nixpkgs.url = github:NixOS/nixpkgs/nixos-unstable;
     flake-utils.url = github:numtide/flake-utils;
   };
   outputs = inputs@{ self, nixpkgs, flake-utils, ... }: flake-utils.lib.eachDefaultSystem (system: let
@@ -13,27 +13,29 @@
         name = "${pname}-${version}";
         nativeBuildInputs = [ pkgs.makeWrapper ];
         src = self;
-        packageJSON = src + "/package.json";
-        yarnNix = src + "/yarn.nix";
+        packageJSON = ./package.json;
+
+        offlineCache = pkgs.fetchYarnDeps {
+          yarnLock = ./yarn.lock;
+          sha256 = "sha256-8dO70wELOd1Lec/jL7CRQzuxkWzvkkC3sD4cqCKGg4Q=";
+        };
+        packageResolutions = {
+          "@matrix-org/matrix-sdk-crypto-nodejs" =
+            "${pkgs.matrix-sdk-crypto-nodejs}/lib/node_modules/@matrix-org/matrix-sdk-crypto-nodejs";
+        };
+
         buildPhase = ''
-          yarn --offline build
+          runHook preBuild
+          yarn build
+          runHook postBuild
         '';
-        preInstall = ''
-          mkdir -p $out/bin $out/node_modules $out/config
-          cp -r node_modules/node-purple $out/node_modules/node-purple
-          cp -r deps/matrix-bifrost/lib $out/lib
-          cp deps/matrix-bifrost/package.json deps/matrix-bifrost/yarn.lock $out
-          cp deps/matrix-bifrost/config/config.schema.yaml $out/config/
-          cat > $out/bin/matrix-bifrost <<EOF
-          #!${pkgs.stdenv.shell}
-          exec ${pkgs.nodejs}/bin/node $out/lib/Program.js "\$@"
-          EOF
-          chmod +x $out/bin/matrix-bifrost
-          wrapProgram $out/bin/matrix-bifrost \
-            --set NODE_PATH "$out/libexec/matrix-bifrost/node_modules"
+
+        postInstall = ''
+          makeWrapper '${pkgs.nodejs}/bin/node' "$out/bin/matrix-bifrost" --add-flags \
+              "$out/libexec/matrix-bifrost/deps/matrix-bifrost/lib/Program.js"
         '';
-        distPhase = ":";
-        publishBinsFor = [ "matrix-bifrost" ];
+
+        doDist = false;
       };
     };
     defaultPackage = packages.matrix-bifrost;
