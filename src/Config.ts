@@ -96,7 +96,7 @@ export class Config {
         Object.keys(newConfig).forEach((key) => {
             if (typeof(configLayer[key]) === "object" &&
                 !Array.isArray(configLayer[key])) {
-                this.ApplyConfig(newConfig[key], this[key]);
+                this.ApplyConfig(newConfig[key], configLayer[key]);
                 return;
             }
             configLayer[key] = newConfig[key];
